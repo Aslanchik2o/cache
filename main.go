@@ -26,15 +26,11 @@ func (c *Cache) Set(key string, value interface{}) {
 	c.items[key] = Item{
 		Value: value,
 	}
-
 }
 
-
-
-func (c *Cache) Get(key string) (interface{}) {
-   item := c.items[key]
-return item
-
+func (c *Cache) Get(key string) interface{} {
+	item := c.items[key]
+	return item.Value
 }
 
 func (c *Cache) Delete(key string) interface{} {
