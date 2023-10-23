@@ -1,41 +1,53 @@
 package cache
 
 import (
-	"fmt"
+	"sync"
+	"time"
 )
 
+// Cache - структура, хранящая элементы в карте
 type Cache struct {
-	items map[int]Item
+	items sync.Map
 }
 
+// Item - структура, хранящая значение и время истечения
 type Item struct {
-	Value interface{}
+	Value      interface{}
+	Expiration time.Time
 }
 
+// New - функция, создающая новый экземпляр Cache
 func New() *Cache {
+	return &Cache{}
+}
 
-	items := make(map[int]Item)
-
-	cache := Cache{
-		items: items,
+// Set - метод, добавляющий элемент в кэш по ключу с заданным TTL
+func (c *Cache) Set(key interface{}, value interface{}, ttl time.Duration) {
+	item := Item{
+		Value:      value,
+		Expiration: time.Now().Add(ttl),
 	}
-	return &cache
+	c.items.Store(key, item)
+	// запускаем функцию, которая удалит элемент из кэша по истечении TTL
+	time.AfterFunc(ttl, func() {
+		c.Delete(key)
+	})
 }
 
-func (c *Cache) Set(key int, value interface{}) {
-	c.items[key] = Item{
-		Value: value,
+// Get - метод, возвращающий элемент из кэша по ключу
+func (c *Cache) Get(key interface{}) (interface{}, bool) {
+	item, ok := c.items.Load(key)
+	if !ok {
+		return nil, false
 	}
+	// проверяем, не истек ли TTL элемента
+	if item.(Item).Expiration.Before(time.Now()) {
+		return nil, false
+	}
+	return item.(Item).Value, true
 }
 
-func (c *Cache) Get(key int) interface{} {
-	item := c.items[key]
-	return item.Value
-}
-
-func (c *Cache) Delete(key int) interface{} {
-	item := c.items[key]
-	delete(c.items, key)
-	fmt.Println(item)
-	return item
+// Delete - метод, удаляющий элемент из кэша по ключу
+func (c *Cache) Delete(key interface{}) {
+	c.items.Delete(key)
 }
